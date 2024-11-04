@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <!-- 背景円 -->
+  <circle cx="96" cy="96" r="96" fill="#4A154B"/>
+  
+  <!-- ベルのデザイン -->
+  <path d="M96 45
+           C75 45 58 62 58 83
+           V105
+           L47 128
+           H145
+           L134 105
+           V83
+           C134 62 117 45 96 45
+           Z" 
+        fill="white"/>
+  
+  <!-- ベルの下部 -->
+  <path d="M96 146
+           C106 146 114 138 114 128
+           H78
+           C78 138 86 146 96 146
+           Z" 
+        fill="white"/>
+  
+  <!-- スラッシュマーク / -->
+  <path d="M58 45
+           L134 146" 
+        stroke="#4A154B"
+        stroke-width="12"
+        stroke-linecap="round"/>
+</svg>
