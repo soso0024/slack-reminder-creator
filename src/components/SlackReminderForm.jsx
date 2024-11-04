@@ -1,7 +1,6 @@
 import React, { useState } from "react";
-import { Calendar, Globe } from "lucide-react";
+import { Calendar, Globe, RefreshCw } from "lucide-react";
 
-// 言語リソース
 const translations = {
   en: {
     title: "Slack Reminder Creator",
@@ -15,9 +14,32 @@ const translations = {
     time: "Time:",
     commandPreview: "Command Preview:",
     copyButton: "Copy to Clipboard",
-    userPlaceholder: "username",
-    channelPlaceholder: "channel",
+    userPlaceholder: "@username",
+    channelPlaceholder: "#channel",
     copied: "Copied!",
+    repeat: "Repeat",
+    once: "Once",
+    interval: "Interval",
+    every: {
+      day: "Every day",
+      week: "Every week",
+      biweekly: "Every 2 weeks",
+      month: "Every month",
+      year: "Every year",
+    },
+    weekdays: {
+      mon: "Mon",
+      tue: "Tue",
+      wed: "Wed",
+      thu: "Thu",
+      fri: "Fri",
+      sat: "Sat",
+      sun: "Sun",
+    },
+    dayTypes: {
+      weekday: "Weekday",
+      weekend: "Weekend",
+    },
   },
   ja: {
     title: "Slack リマインド作成",
@@ -31,25 +53,69 @@ const translations = {
     time: "時間:",
     commandPreview: "コマンドプレビュー:",
     copyButton: "クリップボードにコピー",
-    userPlaceholder: "ユーザー名",
-    channelPlaceholder: "チャンネル名",
+    userPlaceholder: "@ユーザー名",
+    channelPlaceholder: "#チャンネル名",
     copied: "コピーしました！",
+    repeat: "繰り返し",
+    once: "1回のみ",
+    interval: "間隔",
+    every: {
+      day: "毎日",
+      week: "毎週",
+      biweekly: "隔週",
+      month: "毎月",
+      year: "毎年",
+    },
+    weekdays: {
+      mon: "月",
+      tue: "火",
+      wed: "水",
+      thu: "木",
+      fri: "金",
+      sat: "土",
+      sun: "日",
+    },
+    dayTypes: {
+      weekday: "平日",
+      weekend: "休日",
+    },
   },
 };
 
-const SlackReminderForm = () => {
+const weekdays = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+const weekdayNames = {
+  mon: "Monday",
+  tue: "Tuesday",
+  wed: "Wednesday",
+  thu: "Thursday",
+  fri: "Friday",
+  sat: "Saturday",
+  sun: "Sunday",
+};
+
+const repeatOptions = {
+  none: "",
+  daily: "every day",
+  weekly: "every week",
+  biweekly: "every 2 weeks",
+  monthly: "every month",
+  yearly: "every year",
+};
+
+export default function SlackReminderForm() {
   const [target, setTarget] = useState("me");
   const [targetType, setTargetType] = useState("self");
   const [message, setMessage] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("09:00");
   const [customTarget, setCustomTarget] = useState("");
-  const [language, setLanguage] = useState("ja"); // デフォルトを日本語に設定
+  const [language, setLanguage] = useState("ja");
   const [showCopied, setShowCopied] = useState(false);
+  const [repeatInterval, setRepeatInterval] = useState("none");
+  const [selectedDays, setSelectedDays] = useState([]);
 
   const t = translations[language];
 
-  // Slackコマンドの生成
   const generateCommand = () => {
     let targetStr = target;
     if (targetType === "user" && customTarget) {
@@ -58,19 +124,42 @@ const SlackReminderForm = () => {
       targetStr = `#${customTarget}`;
     }
 
-    return `/remind ${targetStr} "${message}" at ${time} on ${date}`;
+    let command = `/remind ${targetStr} "${message}"`;
+
+    if (repeatInterval === "none") {
+      command += ` at ${time} on ${date}`;
+    } else if (selectedDays.length > 0) {
+      const daysStr = selectedDays.map((day) => weekdayNames[day]).join(",");
+      command += ` at ${time} every ${daysStr}`;
+    } else {
+      command += ` at ${time} ${repeatOptions[repeatInterval]}`;
+    }
+
+    return command;
   };
 
-  // クリップボードにコピー
+  const toggleDay = (day) => {
+    setSelectedDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    );
+  };
+
+  const selectDayType = (type) => {
+    if (type === "weekday") {
+      setSelectedDays(["mon", "tue", "wed", "thu", "fri"]);
+    } else if (type === "weekend") {
+      setSelectedDays(["sat", "sun"]);
+    }
+  };
+
   const copyToClipboard = () => {
     navigator.clipboard.writeText(generateCommand());
     setShowCopied(true);
     setTimeout(() => setShowCopied(false), 2000);
   };
 
-  // 言語切り替え
   const toggleLanguage = () => {
-    setLanguage(language === "en" ? "ja" : "en");
+    setLanguage((prev) => (prev === "en" ? "ja" : "en"));
   };
 
   return (
@@ -146,28 +235,93 @@ const SlackReminderForm = () => {
         />
       </div>
 
-      {/* 日付と時間の選択 */}
-      <div className="mb-6 grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium mb-2">{t.date}</label>
-          <div className="relative">
-            <Calendar className="absolute left-2 top-2.5 h-5 w-5 text-gray-400" />
+      {/* 繰り返し設定 */}
+      <div className="mb-6">
+        <label className="block text-sm font-medium mb-2">
+          <RefreshCw className="inline h-4 w-4 mr-2" />
+          {t.repeat}
+        </label>
+        <div className="flex gap-4 mb-4">
+          <select
+            className="w-full p-2 border rounded bg-white"
+            value={repeatInterval}
+            onChange={(e) => setRepeatInterval(e.target.value)}
+          >
+            <option value="none">{t.once}</option>
+            <option value="daily">{t.every.day}</option>
+            <option value="weekly">{t.every.week}</option>
+            <option value="biweekly">{t.every.biweekly}</option>
+            <option value="monthly">{t.every.month}</option>
+            <option value="yearly">{t.every.year}</option>
+          </select>
+        </div>
+
+        {/* 曜日選択 */}
+        {repeatInterval !== "none" && repeatInterval !== "daily" && (
+          <div className="mb-4">
+            {/* 平日/休日選択ボタン */}
+            <div className="flex gap-2 mb-4">
+              <button
+                className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200"
+                onClick={() => selectDayType("weekday")}
+              >
+                {t.dayTypes.weekday}
+              </button>
+              <button
+                className="px-4 py-2 rounded bg-gray-100 hover:bg-gray-200"
+                onClick={() => selectDayType("weekend")}
+              >
+                {t.dayTypes.weekend}
+              </button>
+            </div>
+
+            {/* 曜日選択ボタン */}
+            <div className="flex flex-wrap gap-2">
+              {weekdays.map((day) => (
+                <button
+                  key={day}
+                  onClick={() => toggleDay(day)}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center
+                    ${
+                      selectedDays.includes(day)
+                        ? "bg-blue-500 text-white"
+                        : "bg-gray-100"
+                    }`}
+                >
+                  {t.weekdays[day]}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 日付と時間の設定 */}
+      <div className="mb-6">
+        <div className="grid grid-cols-2 gap-4">
+          {repeatInterval === "none" && (
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                <Calendar className="inline h-4 w-4 mr-2" />
+                {t.date}
+              </label>
+              <input
+                type="date"
+                className="w-full p-2 border rounded"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </div>
+          )}
+          <div className={repeatInterval === "none" ? "" : "col-span-2"}>
+            <label className="block text-sm font-medium mb-2">{t.time}</label>
             <input
-              type="date"
-              className="w-full p-2 pl-10 border rounded"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
+              type="time"
+              className="w-full p-2 border rounded"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
             />
           </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium mb-2">{t.time}</label>
-          <input
-            type="time"
-            className="w-full p-2 border rounded"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-          />
         </div>
       </div>
 
@@ -189,7 +343,6 @@ const SlackReminderForm = () => {
           {t.copyButton}
         </button>
 
-        {/* コピー完了メッセージ */}
         {showCopied && (
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-black text-white px-3 py-1 rounded">
             {t.copied}
@@ -198,6 +351,4 @@ const SlackReminderForm = () => {
       </div>
     </div>
   );
-};
-
-export default SlackReminderForm;
+}
